@@ -5,11 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule - AWS Oceania VCD 2025</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3">
     <style>
         .schedule-controls {
             display: flex;
@@ -113,7 +115,10 @@
 
     <header>
         <div class="container header-inner">
-            <a href="index.html" class="logo">AWS <span>Oceania</span></a>
+            <a href="index.html" class="logo">
+                <img src="favicon.svg" alt="AWS Oceania" style="height: 32px; margin-right: 0.5rem; width: auto;">
+                AWS <span>Oceania</span>
+            </a>
             <div class="header-actions">
                 <nav>
                     <ul id="nav-links">
@@ -143,11 +148,14 @@
                 <select id="filter-timezone">
                     <option value="local">Your Timezone (Detected)</option>
                     <option value="event">Event Timezone (Pacific/Auckland)</option>
+                    <option value="custom">Custom Timezone</option>
+                </select>
+                <select id="custom-timezone" style="display: none;">
+                    <!-- Options will be populated dynamically -->
                 </select>
                 <select id="filter-track">
                     <option value="all">All Tracks</option>
-                    <option value="serverless">Serverless</option>
-                    <option value="ai">AI/ML</option>
+                    <!-- Options will be dynamically populated from schedule data -->
                 </select>
             </div>
 
