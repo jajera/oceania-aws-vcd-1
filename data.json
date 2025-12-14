@@ -6,7 +6,7 @@
         "cfp_end_date": "2025-11-30",
         "cfp_link": "https://sessionize.com/app/organizer/event/demo/cfp",
         "registration_enabled": true,
-        "live_stream_link": "https://twitch.tv/aws",
+        "live_stream_link": "https://www.twitch.tv/awscdo",
         "sessionize_api_url": "https://sessionize.com/api/v2/demo/view/All",
         "hero_headline": "AWS Oceania Virtual Community Day 2025",
         "hero_subheadline": "The second virtual edition of the annual, user-run AWS technical conference.",
@@ -17,25 +17,25 @@
         "show_schedule": true,
         "show_sponsors": true,
         "socials": {
-            "linkedin": "https://linkedin.com/company/aws-community-day",
+            "linkedin": "https://www.linkedin.com/company/aws-user-group-aotearoa",
             "github": "https://github.com/jajera/oceania-aws-vcd-1",
-            "meetup": "https://meetup.com/aws-oceania",
-            "twitch": "https://twitch.tv/aws",
-            "youtube": "https://youtube.com/user/AmazonWebServices"
+            "meetup": "https://www.meetup.com/amazon-web-services-wellington-user-group",
+            "twitch": "https://www.twitch.tv/awscdo",
+            "youtube": "https://www.youtube.com/@awscdo"
         }
     },
     "sponsors": [
         {
             "name": "AWS",
             "tier": "Platinum",
-            "logo": "https://upload.wikimedia.org/wikipedia/commons/9/93/Amazon_Web_Services_Logo.svg",
+            "logo": "../../assets/sponsors/aws-white-orange.svg",
             "url": "https://aws.amazon.com"
         },
         {
-            "name": "Datadog",
+            "name": "Datacom",
             "tier": "Gold",
-            "logo": "https://upload.wikimedia.org/wikipedia/commons/e/e0/Datadog_logo.svg",
-            "url": "https://datadoghq.com"
+            "logo": "../../assets/sponsors/datacom-primary-white.svg",
+            "url": "https://datacom.com/nz/en"
         }
     ],
     "organizers": [

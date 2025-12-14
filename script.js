@@ -116,13 +116,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3. Navigation
     if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', () => {
+        mobileMenuBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent immediate bubbling to document
             navUl.classList.toggle('is-open');
-            // Simple toggle logic
-            if (navUl.classList.contains('is-open')) {
-                navUl.style.transform = 'translateY(0%)';
-            } else {
-                navUl.style.transform = '';
+            // We rely on CSS for the transform now
+            // Allow manual override clear just in case
+            navUl.style.transform = '';
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (event) => {
+            const isClickInsideMenu = navUl.contains(event.target);
+            const isClickOnBtn = mobileMenuBtn.contains(event.target);
+
+            if (navUl.classList.contains('is-open') && !isClickInsideMenu && !isClickOnBtn) {
+                navUl.classList.remove('is-open');
             }
         });
     }
@@ -149,13 +157,76 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function initSchedulePage() {
         const timezoneSelect = document.getElementById('filter-timezone');
+        const customTimezoneSelect = document.getElementById('custom-timezone');
         const trackSelect = document.getElementById('filter-track');
+
+        // Populate custom timezone dropdown with common timezones
+        if (customTimezoneSelect) {
+            const commonTimezones = [
+                { value: 'America/New_York', label: 'Eastern Time (ET)' },
+                { value: 'America/Chicago', label: 'Central Time (CT)' },
+                { value: 'America/Denver', label: 'Mountain Time (MT)' },
+                { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+                { value: 'America/Toronto', label: 'Toronto' },
+                { value: 'America/Vancouver', label: 'Vancouver' },
+                { value: 'Europe/London', label: 'London (GMT)' },
+                { value: 'Europe/Paris', label: 'Paris (CET)' },
+                { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+                { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+                { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+                { value: 'Asia/Hong_Kong', label: 'Hong Kong (HKT)' },
+                { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
+                { value: 'Australia/Sydney', label: 'Sydney (AEDT)' },
+                { value: 'Australia/Melbourne', label: 'Melbourne (AEDT)' },
+                { value: 'Australia/Brisbane', label: 'Brisbane (AEST)' },
+                { value: 'Pacific/Auckland', label: 'Auckland (NZT)' },
+                { value: 'Pacific/Honolulu', label: 'Honolulu (HST)' }
+            ];
+
+            commonTimezones.forEach(tz => {
+                const option = document.createElement('option');
+                option.value = tz.value;
+                option.textContent = tz.label;
+                customTimezoneSelect.appendChild(option);
+            });
+        }
+
+        // Dynamically populate track filter based on actual schedule categories
+        if (trackSelect && appData.schedule) {
+            // Get unique categories from schedule
+            const categories = [...new Set(appData.schedule.map(s => s.category).filter(Boolean))];
+
+            // Clear existing options except "All Tracks"
+            trackSelect.innerHTML = '<option value="all">All Tracks</option>';
+
+            // Add options for each category
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.toLowerCase().replace(/[\/\s]/g, '');
+                option.textContent = category;
+                trackSelect.appendChild(option);
+            });
+        }
+
+        // Handle timezone selection change
+        if (timezoneSelect) {
+            timezoneSelect.addEventListener('change', (e) => {
+                if (customTimezoneSelect) {
+                    customTimezoneSelect.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                }
+                renderSchedule();
+            });
+        }
+
+        // Handle custom timezone change
+        if (customTimezoneSelect) {
+            customTimezoneSelect.addEventListener('change', renderSchedule);
+        }
 
         // Initial Render
         renderSchedule();
 
         // Listeners
-        if (timezoneSelect) timezoneSelect.addEventListener('change', renderSchedule);
         if (trackSelect) trackSelect.addEventListener('change', renderSchedule);
     }
 
@@ -166,10 +237,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const timezonePref = document.getElementById('filter-timezone')?.value || 'local';
         const trackPref = document.getElementById('filter-track')?.value || 'all';
 
+        // Helper function to normalize category names for comparison (removes slashes, spaces, etc.)
+        function normalizeCategory(category) {
+            return category.toLowerCase().replace(/[\/\s]/g, '');
+        }
+
         // Filter
         let sessions = appData.schedule;
         if (trackPref !== 'all') {
-            sessions = sessions.filter(s => s.category.toLowerCase() === trackPref);
+            // trackPref is already normalized (from dropdown value), so compare directly
+            sessions = sessions.filter(s => normalizeCategory(s.category) === trackPref);
         }
 
         if (sessions.length === 0) {
@@ -178,23 +255,132 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         container.innerHTML = sessions.map(session => {
-            // Timezone Logic
-            const startDate = new Date(session.startsAt);
-            const endDate = new Date(session.endsAt);
+            // Parse dates - if no timezone specified, assume they're in event timezone
+            const eventTimezone = 'Pacific/Auckland';
 
+            // Parse dates - if no timezone, assume event timezone
+            // Since JS Date parsing doesn't support timezone, we'll use a workaround
+            const parseDate = (dateString) => {
+                if (dateString.includes('Z') || dateString.match(/[+-]\d{2}:\d{2}$/)) {
+                    return new Date(dateString);
+                }
+
+                // Parse components - assume they represent time in event timezone
+                const [datePart, timePart] = dateString.split('T');
+                const [year, month, day] = datePart.split('-').map(Number);
+                const [hour, minute, second = 0] = (timePart || '').split(':').map(Number);
+
+                // Create date as if it's UTC, then we'll adjust using timezone formatting
+                // We need to find the UTC time that, when formatted in event timezone, gives us the desired time
+                // Use iterative approach: try different UTC times until formatting matches
+
+                // Start with UTC assumption
+                let testDate = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+
+                // Check what this represents in event timezone
+                let formatted = testDate.toLocaleString('en-US', {
+                    timeZone: eventTimezone,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+
+                const [fmtDate, fmtTime] = formatted.split(', ');
+                const [fmtMonth, fmtDay, fmtYear] = fmtDate.split('/').map(Number);
+                const [fmtHour, fmtMinute] = fmtTime.split(':').map(Number);
+
+                // Calculate offset needed
+                // If formatted time doesn't match desired time, adjust
+                const hourDiff = hour - fmtHour;
+                const dayDiff = (day - fmtDay) * 24;
+                const totalHours = hourDiff + dayDiff;
+
+                // Adjust UTC date
+                return new Date(testDate.getTime() - totalHours * 60 * 60 * 1000);
+            };
+
+            const startDate = parseDate(session.startsAt);
+            const endDate = parseDate(session.endsAt);
+
+            // Determine target timezone
+            let targetTimezone;
+            if (timezonePref === 'local') {
+                targetTimezone = undefined; // Use local timezone
+            } else if (timezonePref === 'custom') {
+                targetTimezone = document.getElementById('custom-timezone')?.value || eventTimezone;
+            } else {
+                targetTimezone = eventTimezone;
+            }
+
+            // Format dates and times with timezone handling
             let timeStr;
+            let dateStr = '';
+            let timezoneAbbr = '';
+
+            const timeOpts = { hour: 'numeric', minute: '2-digit', timeZone: targetTimezone };
+            const dateOpts = { month: 'short', day: 'numeric', timeZone: targetTimezone };
+
             if (timezonePref === 'local') {
                 // User's Local Time
-                const opts = { hour: 'numeric', minute: '2-digit' };
-                timeStr = `${startDate.toLocaleTimeString([], opts)} - ${endDate.toLocaleTimeString([], opts)}`;
-            } else {
-                // Event Time (Pacific/Auckland) - approximation for demo
-                // Ideally use toLocaleString with timeZone option
-                const opts = { hour: 'numeric', minute: '2-digit', timeZone: 'Pacific/Auckland' };
+                const startTime = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                const endTime = endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                const startDateLocal = startDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                const endDateLocal = endDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+                timeStr = `${startTime} - ${endTime}`;
+
+                // Always show date, or if it differs between start and end
+                if (startDateLocal !== endDateLocal) {
+                    dateStr = `${startDateLocal} - ${endDateLocal}`;
+                } else {
+                    // Show date (always display it)
+                    dateStr = startDateLocal;
+                }
+            } else if (timezonePref === 'custom') {
+                // Custom Timezone
                 try {
-                    timeStr = `${startDate.toLocaleTimeString('en-NZ', opts)} - ${endDate.toLocaleTimeString('en-NZ', opts)} (NZT)`;
+                    const startTime = startDate.toLocaleTimeString([], timeOpts);
+                    const endTime = endDate.toLocaleTimeString([], timeOpts);
+                    const startDateTz = startDate.toLocaleDateString([], dateOpts);
+                    const endDateTz = endDate.toLocaleDateString([], dateOpts);
+
+                    timeStr = `${startTime} - ${endTime}`;
+
+                    // Always show date, or if it differs between start and end
+                    if (startDateTz !== endDateTz) {
+                        dateStr = `${startDateTz} - ${endDateTz}`;
+                    } else {
+                        dateStr = startDateTz;
+                    }
+
+                    const tzParts = Intl.DateTimeFormat('en', { timeZone: targetTimezone, timeZoneName: 'short' }).formatToParts(new Date());
+                    const tzName = tzParts.find(part => part.type === 'timeZoneName')?.value || targetTimezone.split('/').pop();
+                    timezoneAbbr = ` (${tzName})`;
                 } catch (e) {
-                    timeStr = `${startDate.toLocaleTimeString([], opts)} (Local)`; // Fallback
+                    timeStr = `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+                    timezoneAbbr = '';
+                }
+            } else {
+                // Event Time (Pacific/Auckland)
+                try {
+                    const startTime = startDate.toLocaleTimeString('en-NZ', timeOpts);
+                    const endTime = endDate.toLocaleTimeString('en-NZ', timeOpts);
+                    const startDateTz = startDate.toLocaleDateString('en-NZ', dateOpts);
+                    const endDateTz = endDate.toLocaleDateString('en-NZ', dateOpts);
+
+                    timeStr = `${startTime} - ${endTime} (NZT)`;
+
+                    // Always show date, or if it differs between start and end
+                    if (startDateTz !== endDateTz) {
+                        dateStr = `${startDateTz} - ${endDateTz}`;
+                    } else {
+                        dateStr = startDateTz;
+                    }
+                } catch (e) {
+                    timeStr = `${startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} (Local)`;
                 }
             }
 
@@ -210,8 +396,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `
                 <div class="session-card">
                     <div class="session-time">
-                        ${timeStr}
-                        <span style="font-size: 0.8rem; font-weight: normal; color: var(--color-text-light); margin-top:5px;">${timezonePref === 'local' ? 'Your Time' : 'Event Time'}</span>
+                        ${dateStr ? `<div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--color-text-light);">${dateStr}</div>` : ''}
+                        <div>${timeStr}${timezoneAbbr}</div>
+                        <span style="font-size: 0.8rem; font-weight: normal; color: var(--color-text-light); margin-top:5px;">${timezonePref === 'local' ? 'Your Time' : timezonePref === 'custom' ? 'Custom Time' : 'Event Time'}</span>
                     </div>
                     <div class="session-details">
                         <div class="session-meta">

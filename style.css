@@ -360,9 +360,10 @@ section {
 .sponsor-card img {
   max-width: 100%;
   max-height: 100%;
-  filter: grayscale(100%);
-  transition: filter var(--transition-fast);
-  opacity: 0.7;
+  filter: grayscale(0%);
+  transition: all var(--transition-fast);
+  opacity: 1;
+  transform: scale(1);
 }
 
 .sponsor-card:hover {
@@ -371,7 +372,8 @@ section {
 }
 
 .sponsor-card:hover img {
-  filter: grayscale(0%);
+  filter: brightness(1.2) saturate(1.2);
+  transform: scale(1.1);
   opacity: 1;
 }
 
@@ -504,6 +506,28 @@ section {
   transform: translateY(-3px);
 }
 
+/* Brand specific hovers */
+.social-btn:hover .fa-linkedin {
+  color: #0077b5;
+}
+
+/* LinkedIn Blue */
+.social-btn:hover .fa-github {
+  color: #333;
+}
+
+.social-btn:hover .fa-youtube {
+  color: #ff0000;
+}
+
+.social-btn:hover .fa-twitch {
+  color: #9146ff;
+}
+
+.social-btn:hover .fa-meetup {
+  color: #f64060;
+}
+
 .calendar-options {
   display: none;
   /* Hidden by default */
@@ -533,7 +557,15 @@ footer {
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .hero h1 {
-    font-size: 2.5rem;
+    font-size: 1rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .hero p {
+    font-size: 0rem;
   }
 
   .mobile-menu-btn {
@@ -549,9 +581,11 @@ footer {
     flex-direction: column;
     padding: 2rem;
     gap: 1.5rem;
-    transform: translateY(-100%);
+    transform: translateY(-150%);
     transition: transform var(--transition-normal);
     z-index: 999;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   }
 
   nav ul.is-open {
